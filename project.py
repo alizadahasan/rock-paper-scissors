@@ -1,462 +1,439 @@
-# Importing necessary libraries
 from pathlib import Path
-from PIL import Image # I used PIL (Python Image Library) because of uploading rock,paper,scissors images.
 import random
-try:
-    import tkinter as tk
-except ImportError:
-    tk = None
+import tkinter as tk
+from tkinter import messagebox
+from PIL import Image, ImageTk
 
 try:
-    import pygame # I used pygame for sound effects
+    import pygame
 except ImportError:
     pygame = None
 
-BASE_DIR = Path(__file__).resolve().parent
-sounds = {}
 
-try:
-    RESAMPLE_FILTER = Image.Resampling.LANCZOS
-except AttributeError:
-    RESAMPLE_FILTER = Image.LANCZOS
-
-ImageTk = None
-
-
-def asset_path(filename):
-    return BASE_DIR / filename
-
-
-def init_sounds():
-    if pygame is None:
-        return
-
-    try:
-        pygame.mixer.init()
-        click_sound = pygame.mixer.Sound(str(asset_path("click.wav")))
-    except Exception:
-        return
-
-    sounds.update({
-        "rock": click_sound,
-        "paper": click_sound,
-        "scissors": click_sound,
-    })
-
-# To initialize global variables
-user_score = 0
-computer_score = 0
-user_choice_label = None
-computer_choice_label = None
-result_label = None
-score_label = None
-rock_img = None
-paper_img = None
-scissors_img = None
-computer_name = "Computer"
-computers_defeated = 0
-
-game_over_window = None
-
-choice_frame = None
-result_frame = None
-score_frame = None
-button_frame = None
-
-countdown_label = None
-rock_button = None
-paper_button = None
-scissors_button = None
-player_name = ""
-tournament_mode = False
-sound_muted = False
-window = None
-welcome_screen = None
-menu_bar = None
-game_menu = None
-sound_muted_var = None
-
-# Function to display the welcome screen with game mode options,hides main window, creates a new window for welcome screen with buttons to start different game modes
-def show_welcome_screen():
-    global window, welcome_screen, player_name
-    window.withdraw()
-    welcome_screen = tk.Toplevel()
-    welcome_screen.title("Welcome to Rock, Paper, Scissors Game")
-
-    # To create and display welcome screen elements
-    welcome_label = tk.Label(welcome_screen, text="Welcome to Rock, Paper, Scissors Game!")
-    player_name_label = tk.Label(welcome_screen, text="Enter Your Name:")
-    player_name_entry = tk.Entry(welcome_screen)
-    start_game_button = tk.Button(welcome_screen, text="Start Normal Game Mode",
-                                  command=lambda: start_game(player_name_entry.get()))
-    tournament_mode_button = tk.Button(welcome_screen, text="Start Tournament Game Mode",
-                                       command=lambda: start_tournament_mode(player_name_entry.get()))
-
-    welcome_label.pack(pady=10)
-    player_name_label.pack()
-    player_name_entry.pack()
-    start_game_button.pack()
-    tournament_mode_button.pack()
-
-# Function to start a normal game mode
-def start_game(player_name):
-    global welcome_screen, tournament_mode
-    update_player_name(player_name)
-    welcome_screen.destroy()  # Closes welcome screen, sets game mode to normal, shows game screen, and starts countdown
-    tournament_mode = False
-    show_game_screen()
-    update_ui("", "", "")
-    countdown()
-
-# Function to start tournament game mode.Similar to "start_game" but sets the game mode to tournament
-def start_tournament_mode(player_name):
-    global welcome_screen, tournament_mode
-    update_player_name(player_name)
-    welcome_screen.destroy()
-    tournament_mode = True
-    show_game_screen()
-    update_ui("", "", "")
-    countdown()
-
-# Function to update the player's name globally,sets the global player name variable.
-def update_player_name(name):
-    global player_name
-    player_name = name.strip() or "Player"
-
-# Function to show the main game screen,makes the main game window visible.
-def show_game_screen():
-    global window
-    window.deiconify()
-
-# Function to enable or disable the choice buttons together.
-def set_choice_buttons_state(state):
-    for button in (rock_button, paper_button, scissors_button):
-        if button is not None:
-            button.config(state=state)
-
-# Function for displaying a countdown before starting the game.Performs a 3-second countdown, updates UI, and disables/enables buttons accordingly.
-def countdown(seconds=3):
-    set_choice_buttons_state(tk.DISABLED)
-
-    def tick(remaining):
-        if remaining > 0:
-            suffix = "second" if remaining == 1 else "seconds"
-            countdown_label.config(text=f"Game starting in {remaining} {suffix}...")
-            window.after(1000, tick, remaining - 1)
-            return
-
-        countdown_label.config(text="")
-        set_choice_buttons_state(tk.NORMAL)
-
-    tick(seconds)
-
-# Function to handle keyboard shortcuts for player choices.
-def choose_option_from_keyboard(user_choice):
-    if rock_button is None or rock_button["state"] != tk.NORMAL:
-        return
-
-    choose_option(user_choice)
-
-# Function to process player's choice and manage game logic.Handles player's choice, computer's choice, determines the winner, updates UI, and manages game progression.
-def choose_option(user_choice):
-    global user_score, computer_score, tournament_mode, player_name, computer_name, computers_defeated
-    options = ['rock', 'paper', 'scissors']
-    computer_choice = random.choice(options)
-    result = determine_winner(user_choice, computer_choice)
-    update_ui(user_choice, computer_choice, result)
-
-    # To play the sound based on the user's choice
-    play_sound_based_on_choice(user_choice)
-
-    if tournament_mode:
-        if user_score == 2:
-            reset_scores()
-            computers_defeated += 1
-            if computers_defeated < 3:  # Continue with up to Computer 3
-                computer_name = f"Computer {computers_defeated + 1}"
-                update_ui("", "", f"You won, tournament continues with {computer_name}")
-            else:
-                show_tournament_result(True)  # User wins the tournament
-                return
-        elif computer_score == 2:
-            show_tournament_result(False)  # User loses the tournament
-            return
-    else:
-        # Checking for the end of the game in normal mode
-        if user_score == 5:
-            show_game_finish_screen(True)  # User wins
-            return
-        elif computer_score == 5:
-            show_game_finish_screen(False)  # Computer wins
-            return
-
-# Function to display the game finish screen
-def show_game_finish_screen(user_wins):
-    global game_over_window, player_name, user_score, computer_score
-    set_choice_buttons_state(tk.DISABLED)
-    game_over_window = tk.Toplevel(window)
-    game_over_window.title("Game Over")
-    game_over_window.transient(window)
-    game_over_window.grab_set()
-    game_over_window.protocol("WM_DELETE_WINDOW", close_game)
-
-    # To reset scores
-    user_score = 0
-    computer_score = 0
-
-    if user_wins:
-        finish_label_text = f"{player_name} Wins!" if not tournament_mode else "You won the tournament! Congratulations!"
-    else:
-        finish_label_text = "Computer Wins!" if not tournament_mode else "You lost the tournament. Better luck next time!"
-
-    finish_label = tk.Label(game_over_window, text=finish_label_text)
-    finish_label.pack()
-
-    # To provide buttons to play again or exit
-    play_again_button = tk.Button(game_over_window, text="Play Again", command=lambda: reset_game(game_over_window))
-    leave_button = tk.Button(game_over_window, text="Leave Game", command=close_game)
-    play_again_button.pack()
-    leave_button.pack()
-
-# Function to close the game.Closes the game over window and main game window.
-def close_game():
-    if game_over_window is not None:
-        try:
-            game_over_window.destroy()
-        except tk.TclError:
-            pass
-    window.destroy()
-
-# Function to start the tournament mode from the menu
-def start_tournament_mode_from_menu():
-    global tournament_mode, user_score, computer_score, computer_name, computers_defeated
-    tournament_mode = True
-    user_score = 0
-    computer_score = 0
-    computer_name = "Computer"
-    computers_defeated = 0
-    reset_game(None)  # Resetting the game to start the tournament
-    show_game_screen()  # Showing the game screen if it's not already visible
-    update_ui("", "", "")  # Resetting the UI elements
-    countdown()  # Starting the countdown
-
-# Function to reset scores.
-def reset_scores():
-    global user_score, computer_score
-    user_score = 0
-    computer_score = 0
-
-# Function for playing a sound based on the user's choice.
-def play_sound_based_on_choice(user_choice):
-    if sound_muted:
-        return
-
-    sound = sounds.get(user_choice)
-    if sound:
-        sound.play()
-
-# Function to update the sound setting from the menu toggle.
-def update_sound_muted():
-    global sound_muted
-    sound_muted = sound_muted_var.get()
-
-# Function to determine the winner of the tournament.Compares scores to determine the tournament winner.
-def determine_winner(user, computer):
-    global user_score, computer_score
-    if user == computer:
-        return "It's a tie!"
-    elif (user == "rock" and computer == "scissors") or \
-            (user == "paper" and computer == "rock") or \
-            (user == "scissors" and computer == "paper"):
-        user_score += 1
-        return "You win!"
-    else:
-        computer_score += 1
-        return "You lose!"
-
-# Function to update the UI elements
-def update_ui(user_choice, computer_choice, result):
-    global user_choice_label, computer_choice_label, score_label, player_name, computer_name
-    user_choice_label.config(text=f"{player_name}'s Choice: {user_choice} {get_emoji(user_choice)}")
-    computer_choice_label.config(text=f"{computer_name}'s Choice: {computer_choice} {get_emoji(computer_choice)}")
-    result_label.config(text=result)
-    score_label.config(text=f"Score: {player_name} - {user_score} | {computer_name} - {computer_score}")
-
-# Function to set up the UI elements
-def setup_ui():
-    global user_choice_label, computer_choice_label, result_label, score_label, rock_img, paper_img, scissors_img, countdown_label
-    global choice_frame, result_frame, score_frame, button_frame, rock_button, paper_button, scissors_button
-
-    # To load and resize images for choices
-    desired_size = (100, 100)
-    rock_img = Image.open(asset_path("rock.png")).resize(desired_size, RESAMPLE_FILTER)
-    rock_img = ImageTk.PhotoImage(rock_img)
-
-    paper_img = Image.open(asset_path("paper.png")).resize(desired_size, RESAMPLE_FILTER)
-    paper_img = ImageTk.PhotoImage(paper_img)
-
-    scissors_img = Image.open(asset_path("scissors.png")).resize(desired_size, RESAMPLE_FILTER)
-    scissors_img = ImageTk.PhotoImage(scissors_img)
-
-    # To create frames for different UI components
-    choice_frame = tk.Frame(window)
-    result_frame = tk.Frame(window)
-    score_frame = tk.Frame(window)
-    button_frame = tk.Frame(window)
-
-    # To create labels for user choice, computer choice, result, and score
-    global user_choice_label, computer_choice_label, score_label
-    user_choice_label = tk.Label(window, text="")
-    computer_choice_label = tk.Label(window, text="Computer's Choice: ")
-    result_label = tk.Label(window, text="")
-    score_label = tk.Label(window, text="Score: User - 0 | Computer - 0")
-
-    # To pack labels into respective frames
-    user_choice_label.pack(in_=choice_frame, side=tk.LEFT)
-    computer_choice_label.pack(in_=choice_frame, side=tk.RIGHT)
-    result_label.pack(in_=result_frame)
-    score_label.pack(in_=score_frame)
-
-    # To create buttons for rock, paper, and scissors
-    rock_button = create_image_button(rock_img, lambda: choose_option("rock"))
-    paper_button = create_image_button(paper_img, lambda: choose_option("paper"))
-    scissors_button = create_image_button(scissors_img, lambda: choose_option("scissors"))
-
-    # To pack buttons into the button frame
-    rock_button.pack(in_=button_frame, side=tk.LEFT)
-    paper_button.pack(in_=button_frame, side=tk.LEFT)
-    scissors_button.pack(in_=button_frame, side=tk.LEFT)
-
-    # To pack frames into the main window
-    choice_frame.pack(pady=10)
-    result_frame.pack(pady=10)
-    score_frame.pack(pady=10)
-    button_frame.pack(pady=10)
-
-    # To create and pack a countdown label
-    countdown_label = tk.Label(window, text="")
-    countdown_label.pack()
-
-# Function to create a button with an image
-def create_image_button(image, command):
-    return tk.Button(window, image=image, command=command, borderwidth=0)
-
-# Function to start a new game
-def new_game():
-    global tournament_mode
-    tournament_mode = False  # Setting the game to normal mode
-    reset_game(None)  # Reset the game
-    update_ui("", "", "")  # Updating UI to reflect the reset
-
-# Function to reset the game
-def reset_game(finish_screen):
-    global user_score, computer_score, computer_name, computers_defeated, game_over_window
-    user_score = 0
-    computer_score = 0
-    computer_name = "Computer"
-    computers_defeated = 0
-    user_choice_label.config(text="")
-    computer_choice_label.config(text="Computer's Choice: ")
-    result_label.config(text="")
-    score_label.config(text=f"Score: {player_name} - 0 | Computer - 0")
-    if finish_screen:
-        finish_screen.destroy()
-        game_over_window = None
-    set_choice_buttons_state(tk.NORMAL)
-
-# Function to show the tournament result with an option to start a new tournament or normal game mode
-def show_tournament_result(user_won):
-    global game_over_window
-    set_choice_buttons_state(tk.DISABLED)
-    game_over_window = tk.Toplevel(window)
-    game_over_window.title("Tournament Over")
-    game_over_window.transient(window)
-    game_over_window.grab_set()
-    game_over_window.protocol("WM_DELETE_WINDOW", close_game)
-
-    if user_won:
-        finish_label_text = "You won the tournament! Congratulations!"
-    else:
-        finish_label_text = "You lost the tournament. Better luck next time!"
-
-    finish_label = tk.Label(game_over_window, text=finish_label_text)
-    finish_label.pack()
-
-    # New Tournament button
-    new_tournament_button = tk.Button(game_over_window, text="New Tournament", command=start_new_tournament)
-    new_tournament_button.pack()
-
-    # Normal Game Mode button
-    normal_game_mode_button = tk.Button(game_over_window, text="Normal Game Mode", command=start_normal_game_mode)
-    normal_game_mode_button.pack()
-
-    leave_game_button = tk.Button(game_over_window, text="Leave Game", command=close_game)
-    leave_game_button.pack()
-
-# Function to start a new tournament
-def start_new_tournament():
-    global tournament_mode
-    tournament_mode = True
-    reset_game(game_over_window)  # Resetting the game to start the tournament
-    update_ui("", "", "")  # Updating UI to reflect the reset
-    countdown()  # Starting the countdown
-
-# Function to start normal game
-def start_normal_game_mode():
-    global tournament_mode
-    tournament_mode = False
-    reset_game(game_over_window)  # Resetting the game to start normal mode
-    update_ui("", "", "")  # Updating UI to reflect the reset
-    countdown()  # Starting the countdown
-
-# Function to get emoji representation of a choice
-def get_emoji(choice):
-    emojis = {
-        'rock': '✊',
-        'paper': '✋',
-        'scissors': '✌️',
+class RockPaperScissorsGame:
+    OPTIONS = ("rock", "paper", "scissors")
+    EMOJIS = {
+        "rock": "✊",
+        "paper": "✋",
+        "scissors": "✌️",
     }
-    return emojis.get(choice, '')
 
-def main():
-    global window, menu_bar, game_menu, ImageTk, sound_muted_var
+    def __init__(self):
+        self.base_dir = Path(__file__).resolve().parent
 
-    if tk is None:
-        raise RuntimeError("Tkinter is required to run the game.")
-    from PIL import ImageTk as pil_image_tk
-    ImageTk = pil_image_tk
+        self.window = tk.Tk()
+        self.window.title("Rock, Paper, Scissors Game")
+        self.window.minsize(450, 350)
+        self.window.protocol("WM_DELETE_WINDOW", self.close_game)
 
-    # Tkinter window initialization and configuration.
-    window = tk.Tk()
-    window.title("Rock, Paper, Scissors Game")
-    window.minsize(400, 300)
+        self.player_name = "Player"
+        self.computer_name = "Computer"
+        self.user_score = 0
+        self.computer_score = 0
+        self.computers_defeated = 0
+        self.tournament_mode = False
+        self.sound_muted = tk.BooleanVar(value=False)
+        self.game_over_window = None
+        self.welcome_screen = None
 
-    #Sets up the main window with title, size, and menu bar.
-    # Menu bar setup
-    menu_bar = tk.Menu(window)
-    window.config(menu=menu_bar)
+        self.images = {}
+        self.sounds = {}
 
-    # Game menu setup
-    game_menu = tk.Menu(menu_bar, tearoff=0)
-    menu_bar.add_cascade(label="Menu", menu=game_menu)
-    game_menu.add_command(label="New Game", command=new_game)
-    game_menu.add_command(label="Tournament Mode", command=start_tournament_mode_from_menu)
-    sound_muted_var = tk.BooleanVar(value=sound_muted)
-    game_menu.add_checkbutton(label="Mute Sound", variable=sound_muted_var, command=update_sound_muted)
-    game_menu.add_separator()
-    game_menu.add_command(label="Exit", command=window.quit)
+        self.user_choice_label = None
+        self.computer_choice_label = None
+        self.result_label = None
+        self.score_label = None
+        self.countdown_label = None
+        self.rock_button = None
+        self.paper_button = None
+        self.scissors_button = None
 
-    # UI setup and welcome screen display.Calls setup_ui and show_welcome_screen functions to initialize the UI and show the welcome screen.
-    init_sounds()
-    setup_ui()
-    window.bind("r", lambda event: choose_option_from_keyboard("rock"))
-    window.bind("p", lambda event: choose_option_from_keyboard("paper"))
-    window.bind("s", lambda event: choose_option_from_keyboard("scissors"))
-    show_welcome_screen()
+        self.init_sounds()
+        self.create_menu()
+        self.setup_ui()
+        self.bind_keys()
+        self.show_welcome_screen()
 
-    # Tkinter event loop.Starts the main loop to keep the application running.
-    window.mainloop()
+    def asset_path(self, filename):
+        return self.base_dir / filename
+
+    def init_sounds(self):
+        if pygame is None:
+            return
+
+        try:
+            pygame.mixer.init()
+            click_sound = pygame.mixer.Sound(str(self.asset_path("click.wav")))
+        except Exception:
+            return
+
+        for option in self.OPTIONS:
+            self.sounds[option] = click_sound
+
+    def create_menu(self):
+        menu_bar = tk.Menu(self.window)
+        self.window.config(menu=menu_bar)
+
+        game_menu = tk.Menu(menu_bar, tearoff=0)
+        menu_bar.add_cascade(label="Menu", menu=game_menu)
+
+        game_menu.add_command(label="New Game", command=self.new_game)
+        game_menu.add_command(label="Tournament Mode", command=self.start_tournament_from_menu)
+        game_menu.add_checkbutton(
+            label="Mute Sound",
+            variable=self.sound_muted,
+        )
+        game_menu.add_separator()
+        game_menu.add_command(label="Exit", command=self.close_game)
+
+    def setup_ui(self):
+        self.load_images()
+
+        choice_frame = tk.Frame(self.window)
+        result_frame = tk.Frame(self.window)
+        score_frame = tk.Frame(self.window)
+        button_frame = tk.Frame(self.window)
+
+        self.user_choice_label = tk.Label(choice_frame, text="", font=("Arial", 11))
+        self.computer_choice_label = tk.Label(choice_frame, text="Computer's Choice:", font=("Arial", 11))
+        self.result_label = tk.Label(result_frame, text="", font=("Arial", 14, "bold"))
+        self.score_label = tk.Label(score_frame, text="Score: Player - 0 | Computer - 0", font=("Arial", 12))
+        self.countdown_label = tk.Label(self.window, text="", font=("Arial", 12, "bold"))
+
+        self.user_choice_label.pack(side=tk.LEFT, padx=10)
+        self.computer_choice_label.pack(side=tk.RIGHT, padx=10)
+        self.result_label.pack()
+        self.score_label.pack()
+
+        self.rock_button = self.create_choice_button(button_frame, "rock")
+        self.paper_button = self.create_choice_button(button_frame, "paper")
+        self.scissors_button = self.create_choice_button(button_frame, "scissors")
+
+        self.rock_button.pack(side=tk.LEFT, padx=10)
+        self.paper_button.pack(side=tk.LEFT, padx=10)
+        self.scissors_button.pack(side=tk.LEFT, padx=10)
+
+        choice_frame.pack(pady=15)
+        result_frame.pack(pady=10)
+        score_frame.pack(pady=10)
+        button_frame.pack(pady=15)
+        self.countdown_label.pack(pady=10)
+
+    def load_images(self):
+        try:
+            resample_filter = Image.Resampling.LANCZOS
+        except AttributeError:
+            resample_filter = Image.LANCZOS
+
+        desired_size = (100, 100)
+
+        for option in self.OPTIONS:
+            filename = f"{option}.png"
+            path = self.asset_path(filename)
+
+            try:
+                image = Image.open(path).resize(desired_size, resample_filter)
+                self.images[option] = ImageTk.PhotoImage(image)
+            except FileNotFoundError:
+                messagebox.showerror("Missing Image", f"Could not find {filename}.")
+                self.window.destroy()
+                raise
+            except Exception as error:
+                messagebox.showerror("Image Error", f"Could not load {filename}:\n{error}")
+                self.window.destroy()
+                raise
+
+    def create_choice_button(self, parent, choice):
+        return tk.Button(
+            parent,
+            image=self.images[choice],
+            text=choice.capitalize(),
+            compound=tk.TOP,
+            command=lambda: self.choose_option(choice),
+            borderwidth=2,
+            padx=5,
+            pady=5,
+        )
+
+    def bind_keys(self):
+        self.window.bind("r", lambda event: self.choose_option_from_keyboard("rock"))
+        self.window.bind("p", lambda event: self.choose_option_from_keyboard("paper"))
+        self.window.bind("s", lambda event: self.choose_option_from_keyboard("scissors"))
+
+    def show_welcome_screen(self):
+        self.window.withdraw()
+
+        self.welcome_screen = tk.Toplevel(self.window)
+        self.welcome_screen.title("Welcome")
+        self.welcome_screen.minsize(350, 200)
+        self.welcome_screen.protocol("WM_DELETE_WINDOW", self.close_game)
+
+        tk.Label(
+            self.welcome_screen,
+            text="Welcome to Rock, Paper, Scissors!",
+            font=("Arial", 14, "bold"),
+        ).pack(pady=10)
+
+        tk.Label(self.welcome_screen, text="Enter Your Name:").pack()
+        name_entry = tk.Entry(self.welcome_screen)
+        name_entry.pack(pady=5)
+        name_entry.focus_set()
+
+        tk.Button(
+            self.welcome_screen,
+            text="Start Normal Game Mode",
+            command=lambda: self.start_game(name_entry.get()),
+        ).pack(pady=5)
+
+        tk.Button(
+            self.welcome_screen,
+            text="Start Tournament Game Mode",
+            command=lambda: self.start_tournament_mode(name_entry.get()),
+        ).pack(pady=5)
+
+        self.welcome_screen.bind("<Return>", lambda event: self.start_game(name_entry.get()))
+
+    def update_player_name(self, name):
+        self.player_name = name.strip() or "Player"
+
+    def start_game(self, name):
+        self.update_player_name(name)
+        self.tournament_mode = False
+        self.computer_name = "Computer"
+        self.computers_defeated = 0
+        self.reset_scores()
+        self.close_welcome_screen()
+        self.show_game_screen()
+        self.update_ui("", "", "")
+        self.countdown()
+
+    def start_tournament_mode(self, name):
+        self.update_player_name(name)
+        self.tournament_mode = True
+        self.computer_name = "Computer 1"
+        self.computers_defeated = 0
+        self.reset_scores()
+        self.close_welcome_screen()
+        self.show_game_screen()
+        self.update_ui("", "", "Defeat 3 computers to win the tournament!")
+        self.countdown()
+
+    def close_welcome_screen(self):
+        if self.welcome_screen is not None:
+            self.welcome_screen.destroy()
+            self.welcome_screen = None
+
+    def show_game_screen(self):
+        self.window.deiconify()
+
+    def set_choice_buttons_state(self, state):
+        for button in (self.rock_button, self.paper_button, self.scissors_button):
+            if button is not None:
+                button.config(state=state)
+
+    def countdown(self, seconds=3):
+        self.set_choice_buttons_state(tk.DISABLED)
+
+        def tick(remaining):
+            if remaining > 0:
+                suffix = "second" if remaining == 1 else "seconds"
+                self.countdown_label.config(text=f"Game starting in {remaining} {suffix}...")
+                self.window.after(1000, tick, remaining - 1)
+            else:
+                self.countdown_label.config(text="")
+                self.set_choice_buttons_state(tk.NORMAL)
+
+        tick(seconds)
+
+    def choose_option_from_keyboard(self, choice):
+        if self.rock_button is None or self.rock_button["state"] != tk.NORMAL:
+            return
+        self.choose_option(choice)
+
+    def choose_option(self, user_choice):
+        computer_choice = random.choice(self.OPTIONS)
+        result = self.determine_winner(user_choice, computer_choice)
+        self.play_sound(user_choice)
+        self.update_ui(user_choice, computer_choice, result)
+
+        if self.tournament_mode:
+            self.check_tournament_progress()
+        else:
+            self.check_normal_game_progress()
+
+    def determine_winner(self, user_choice, computer_choice):
+        if user_choice == computer_choice:
+            return "It's a tie!"
+
+        user_wins = (
+            (user_choice == "rock" and computer_choice == "scissors") or
+            (user_choice == "paper" and computer_choice == "rock") or
+            (user_choice == "scissors" and computer_choice == "paper")
+        )
+
+        if user_wins:
+            self.user_score += 1
+            return "You win this round!"
+
+        self.computer_score += 1
+        return "You lose this round!"
+
+    def check_normal_game_progress(self):
+        if self.user_score == 5:
+            self.show_game_finish_screen(True)
+        elif self.computer_score == 5:
+            self.show_game_finish_screen(False)
+
+    def check_tournament_progress(self):
+        if self.user_score == 2:
+            self.computers_defeated += 1
+
+            if self.computers_defeated >= 3:
+                self.show_tournament_result(True)
+                return
+
+            self.computer_name = f"Computer {self.computers_defeated + 1}"
+            self.reset_scores()
+            self.update_ui("", "", f"You defeated a computer! Next opponent: {self.computer_name}")
+            self.countdown()
+
+        elif self.computer_score == 2:
+            self.show_tournament_result(False)
+
+    def play_sound(self, choice):
+        if self.sound_muted.get():
+            return
+
+        sound = self.sounds.get(choice)
+        if sound:
+            sound.play()
+
+    def update_ui(self, user_choice, computer_choice, result):
+        user_emoji = self.get_emoji(user_choice)
+        computer_emoji = self.get_emoji(computer_choice)
+
+        self.user_choice_label.config(
+            text=f"{self.player_name}'s Choice: {user_choice.capitalize()} {user_emoji}" if user_choice else f"{self.player_name}'s Choice:"
+        )
+        self.computer_choice_label.config(
+            text=f"{self.computer_name}'s Choice: {computer_choice.capitalize()} {computer_emoji}" if computer_choice else f"{self.computer_name}'s Choice:"
+        )
+        self.result_label.config(text=result)
+        self.score_label.config(
+            text=f"Score: {self.player_name} - {self.user_score} | {self.computer_name} - {self.computer_score}"
+        )
+
+    def get_emoji(self, choice):
+        return self.EMOJIS.get(choice, "")
+
+    def reset_scores(self):
+        self.user_score = 0
+        self.computer_score = 0
+
+    def reset_game(self):
+        self.reset_scores()
+        self.computer_name = "Computer 1" if self.tournament_mode else "Computer"
+        self.computers_defeated = 0
+        self.update_ui("", "", "")
+        self.set_choice_buttons_state(tk.NORMAL)
+
+    def new_game(self):
+        self.tournament_mode = False
+        self.computer_name = "Computer"
+        self.reset_game()
+        self.countdown()
+
+    def start_tournament_from_menu(self):
+        self.tournament_mode = True
+        self.computer_name = "Computer 1"
+        self.reset_game()
+        self.update_ui("", "", "Defeat 3 computers to win the tournament!")
+        self.countdown()
+
+    def show_game_finish_screen(self, user_wins):
+        self.set_choice_buttons_state(tk.DISABLED)
+
+        if user_wins:
+            message = f"{self.player_name} wins the game!"
+        else:
+            message = "Computer wins the game!"
+
+        self.show_end_window("Game Over", message, include_tournament_button=True)
+
+    def show_tournament_result(self, user_won):
+        self.set_choice_buttons_state(tk.DISABLED)
+
+        if user_won:
+            message = "You won the tournament! Congratulations!"
+        else:
+            message = "You lost the tournament. Better luck next time!"
+
+        self.show_end_window("Tournament Over", message, include_tournament_button=True)
+
+    def show_end_window(self, title, message, include_tournament_button=False):
+        if self.game_over_window is not None:
+            self.game_over_window.destroy()
+
+        self.game_over_window = tk.Toplevel(self.window)
+        self.game_over_window.title(title)
+        self.game_over_window.transient(self.window)
+        self.game_over_window.grab_set()
+        self.game_over_window.protocol("WM_DELETE_WINDOW", self.close_game)
+
+        tk.Label(self.game_over_window, text=message, font=("Arial", 13, "bold")).pack(pady=10)
+
+        tk.Button(
+            self.game_over_window,
+            text="Play Normal Game",
+            command=self.restart_normal_from_end_window,
+        ).pack(pady=5)
+
+        if include_tournament_button:
+            tk.Button(
+                self.game_over_window,
+                text="Play Tournament",
+                command=self.restart_tournament_from_end_window,
+            ).pack(pady=5)
+
+        tk.Button(
+            self.game_over_window,
+            text="Leave Game",
+            command=self.close_game,
+        ).pack(pady=5)
+
+    def close_end_window(self):
+        if self.game_over_window is not None:
+            self.game_over_window.destroy()
+            self.game_over_window = None
+
+    def restart_normal_from_end_window(self):
+        self.close_end_window()
+        self.tournament_mode = False
+        self.computer_name = "Computer"
+        self.reset_game()
+        self.countdown()
+
+    def restart_tournament_from_end_window(self):
+        self.close_end_window()
+        self.tournament_mode = True
+        self.computer_name = "Computer 1"
+        self.reset_game()
+        self.update_ui("", "", "Defeat 3 computers to win the tournament!")
+        self.countdown()
+
+    def close_game(self):
+        try:
+            if pygame is not None:
+                pygame.mixer.quit()
+        except Exception:
+            pass
+
+        self.window.destroy()
+
+    def run(self):
+        self.window.mainloop()
 
 
 if __name__ == "__main__":
-    main()
+    game = RockPaperScissorsGame()
+    game.run()
