@@ -286,7 +286,6 @@ def update_ui(user_choice, computer_choice, result):
 def setup_ui():
     global user_choice_label, computer_choice_label, result_label, score_label, rock_img, paper_img, scissors_img, countdown_label
     global choice_frame, result_frame, score_frame, button_frame, rock_button, paper_button, scissors_button
-    global menu_bar, game_menu
 
     # To load and resize images for choices
     desired_size = (100, 100)
@@ -337,21 +336,6 @@ def setup_ui():
     # To create and pack a countdown label
     countdown_label = tk.Label(window, text="")
     countdown_label.pack()
-
-    # To add a "Tournament Mode" option to the game menu
-    game_menu.add_command(label="Tournament Mode", command=start_tournament_mode_from_menu)
-
-    # To create a new game menu
-    menu_bar.delete("Menu")
-    game_menu = tk.Menu(menu_bar, tearoff=0)
-    game_menu.add_command(label="New Game", command=new_game)
-    game_menu.add_command(label="Tournament Mode", command=start_tournament_mode_from_menu)
-    game_menu.add_checkbutton(label="Mute Sound", variable=sound_muted_var, command=update_sound_muted)
-    game_menu.add_command(label="Exit", command=window.quit)
-
-    # To add the new game menu to the menu bar
-    menu_bar.add_cascade(label="Menu", menu=game_menu)
-    window.config(menu=menu_bar)
 
 # Function to create a button with an image
 def create_image_button(image, command):
@@ -456,6 +440,7 @@ def main():
     game_menu = tk.Menu(menu_bar, tearoff=0)
     menu_bar.add_cascade(label="Menu", menu=game_menu)
     game_menu.add_command(label="New Game", command=new_game)
+    game_menu.add_command(label="Tournament Mode", command=start_tournament_mode_from_menu)
     sound_muted_var = tk.BooleanVar(value=sound_muted)
     game_menu.add_checkbutton(label="Mute Sound", variable=sound_muted_var, command=update_sound_muted)
     game_menu.add_separator()
