@@ -6,6 +6,30 @@ Welcome to the **Rock, Paper, Scissors** game! This game allows you to play the 
 
 ---
 
+## Setup
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Tkinter is also required to run the GUI. Some Python installations include it by default; others may require a separate install.
+
+## Run
+
+```bash
+python project.py
+```
+
+## Test
+
+```bash
+python -m unittest discover
+```
+
+---
+
 ## Game Rules
 
 - You can choose between three options: **Rock**, **Paper**, or **Scissors**.
@@ -74,4 +98,3 @@ Have fun playing the **Rock, Paper, Scissors** game! Test your strategy and see 
 ---
 
 **Developed by**: Hasan Alizada
-
