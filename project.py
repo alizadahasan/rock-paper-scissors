@@ -148,6 +148,13 @@ def countdown(seconds=3):
 
     tick(seconds)
 
+# Function to handle keyboard shortcuts for player choices.
+def choose_option_from_keyboard(user_choice):
+    if rock_button is None or rock_button["state"] != tk.NORMAL:
+        return
+
+    choose_option(user_choice)
+
 # Function to process player's choice and manage game logic.Handles player's choice, computer's choice, determines the winner, updates UI, and manages game progression.
 def choose_option(user_choice):
     global user_score, computer_score, tournament_mode, player_name, computer_name, computers_defeated
@@ -444,6 +451,9 @@ def main():
     # UI setup and welcome screen display.Calls setup_ui and show_welcome_screen functions to initialize the UI and show the welcome screen.
     init_sounds()
     setup_ui()
+    window.bind("r", lambda event: choose_option_from_keyboard("rock"))
+    window.bind("p", lambda event: choose_option_from_keyboard("paper"))
+    window.bind("s", lambda event: choose_option_from_keyboard("scissors"))
     show_welcome_screen()
 
     # Tkinter event loop.Starts the main loop to keep the application running.
