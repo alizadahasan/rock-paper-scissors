@@ -1,8 +1,12 @@
 # Importing necessary libraries
 from pathlib import Path
-import tkinter as tk
-from PIL import Image, ImageTk # I used PIL (Python Image Library) because of uploading rock,paper,scissors images.
+from PIL import Image # I used PIL (Python Image Library) because of uploading rock,paper,scissors images.
 import random
+try:
+    import tkinter as tk
+except ImportError:
+    tk = None
+
 try:
     import pygame # I used pygame for sound effects
 except ImportError:
@@ -15,6 +19,8 @@ try:
     RESAMPLE_FILTER = Image.Resampling.LANCZOS
 except AttributeError:
     RESAMPLE_FILTER = Image.LANCZOS
+
+ImageTk = None
 
 
 def asset_path(filename):
@@ -63,6 +69,10 @@ paper_button = None
 scissors_button = None
 player_name = ""
 tournament_mode = False
+window = None
+welcome_screen = None
+menu_bar = None
+game_menu = None
 
 # Function to display the welcome screen with game mode options,hides main window, creates a new window for welcome screen with buttons to start different game modes
 def show_welcome_screen():
@@ -406,27 +416,39 @@ def get_emoji(choice):
     }
     return emojis.get(choice, '')
 
-# Tkinter window initialization and configuration.
-window = tk.Tk()
-window.title("Rock, Paper, Scissors Game")
-window.minsize(400, 300)
+def main():
+    global window, menu_bar, game_menu, ImageTk
 
-#Sets up the main window with title, size, and menu bar.
-# Menu bar setup
-menu_bar = tk.Menu(window)
-window.config(menu=menu_bar)
+    if tk is None:
+        raise RuntimeError("Tkinter is required to run the game.")
+    from PIL import ImageTk as pil_image_tk
+    ImageTk = pil_image_tk
 
-# Game menu setup
-game_menu = tk.Menu(menu_bar, tearoff=0)
-menu_bar.add_cascade(label="Menu", menu=game_menu)
-game_menu.add_command(label="New Game", command=new_game)
-game_menu.add_separator()
-game_menu.add_command(label="Exit", command=window.quit)
+    # Tkinter window initialization and configuration.
+    window = tk.Tk()
+    window.title("Rock, Paper, Scissors Game")
+    window.minsize(400, 300)
 
-# UI setup and welcome screen display.Calls setup_ui and show_welcome_screen functions to initialize the UI and show the welcome screen.
-init_sounds()
-setup_ui()
-show_welcome_screen()
+    #Sets up the main window with title, size, and menu bar.
+    # Menu bar setup
+    menu_bar = tk.Menu(window)
+    window.config(menu=menu_bar)
 
-# Tkinter event loop.Starts the main loop to keep the application running.
-window.mainloop()
+    # Game menu setup
+    game_menu = tk.Menu(menu_bar, tearoff=0)
+    menu_bar.add_cascade(label="Menu", menu=game_menu)
+    game_menu.add_command(label="New Game", command=new_game)
+    game_menu.add_separator()
+    game_menu.add_command(label="Exit", command=window.quit)
+
+    # UI setup and welcome screen display.Calls setup_ui and show_welcome_screen functions to initialize the UI and show the welcome screen.
+    init_sounds()
+    setup_ui()
+    show_welcome_screen()
+
+    # Tkinter event loop.Starts the main loop to keep the application running.
+    window.mainloop()
+
+
+if __name__ == "__main__":
+    main()
