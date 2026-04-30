@@ -47,7 +47,6 @@ score_label = None
 rock_img = None
 paper_img = None
 scissors_img = None
-players = []
 computer_name = "Computer"
 computers_defeated = 0
 
@@ -175,8 +174,12 @@ def choose_option(user_choice):
 # Function to display the game finish screen
 def show_game_finish_screen(user_wins):
     global game_over_window, player_name, user_score, computer_score
+    set_choice_buttons_state(tk.DISABLED)
     game_over_window = tk.Toplevel(window)
     game_over_window.title("Game Over")
+    game_over_window.transient(window)
+    game_over_window.grab_set()
+    game_over_window.protocol("WM_DELETE_WINDOW", close_game)
 
     # To reset scores
     user_score = 0
@@ -198,7 +201,11 @@ def show_game_finish_screen(user_wins):
 
 # Function to close the game.Closes the game over window and main game window.
 def close_game():
-    game_over_window.destroy()
+    if game_over_window is not None:
+        try:
+            game_over_window.destroy()
+        except tk.TclError:
+            pass
     window.destroy()
 
 # Function to start the tournament mode from the menu
@@ -331,32 +338,29 @@ def new_game():
 
 # Function to reset the game
 def reset_game(finish_screen):
-    global user_score, computer_score, players, computer_name, computers_defeated
+    global user_score, computer_score, computer_name, computers_defeated, game_over_window
     user_score = 0
     computer_score = 0
     computer_name = "Computer"
     computers_defeated = 0
-    players = []
     user_choice_label.config(text="")
     computer_choice_label.config(text="Computer's Choice: ")
     result_label.config(text="")
     score_label.config(text=f"Score: {player_name} - 0 | Computer - 0")
     if finish_screen:
         finish_screen.destroy()
-
-# Function to show the tournament result
-def show_tournament_result():
-    global players
-    winner = determine_winner_tournament(players[0], players[1])
-    players = []
-    reset_game(None)
-    show_game_finish_screen()
+        game_over_window = None
+    set_choice_buttons_state(tk.NORMAL)
 
 # Function to show the tournament result with an option to start a new tournament or normal game mode
 def show_tournament_result(user_won):
     global game_over_window
+    set_choice_buttons_state(tk.DISABLED)
     game_over_window = tk.Toplevel(window)
     game_over_window.title("Tournament Over")
+    game_over_window.transient(window)
+    game_over_window.grab_set()
+    game_over_window.protocol("WM_DELETE_WINDOW", close_game)
 
     if user_won:
         finish_label_text = "You won the tournament! Congratulations!"
@@ -377,11 +381,6 @@ def show_tournament_result(user_won):
     leave_game_button = tk.Button(game_over_window, text="Leave Game", command=close_game)
     leave_game_button.pack()
 
-# Function to close the game
-def close_game():
-    game_over_window.destroy()
-    window.destroy()
-
 # Function to start a new tournament
 def start_new_tournament():
     global tournament_mode
@@ -397,20 +396,6 @@ def start_normal_game_mode():
     reset_game(game_over_window)  # Resetting the game to start normal mode
     update_ui("", "", "")  # Updating UI to reflect the reset
     countdown()  # Starting the countdown
-
-# Function to determine the winner of the tournament.
-def determine_winner_tournament(player1, player2):
-    global user_score, computer_score
-    if player1 == player_name:
-        if user_score > computer_score:
-            return player1
-        else:
-            return player2
-    else:
-        if computer_score > user_score:
-            return player2
-        else:
-            return player1
 
 # Function to get emoji representation of a choice
 def get_emoji(choice):
