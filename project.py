@@ -1,17 +1,41 @@
 # Importing necessary libraries
+from pathlib import Path
 import tkinter as tk
 from PIL import Image, ImageTk # I used PIL (Python Image Library) because of uploading rock,paper,scissors images.
 import random
-import pygame # I used pygame for sound effects
-import time # I used time for countdown
+try:
+    import pygame # I used pygame for sound effects
+except ImportError:
+    pygame = None
 
-# Initialize Pygame mixer for sound effects
-pygame.mixer.init()
+BASE_DIR = Path(__file__).resolve().parent
+sounds = {}
 
-# To load sound effects
-rock_sound = pygame.mixer.Sound("click.wav")
-paper_sound = pygame.mixer.Sound("click.wav")
-scissors_sound = pygame.mixer.Sound("click.wav")
+try:
+    RESAMPLE_FILTER = Image.Resampling.LANCZOS
+except AttributeError:
+    RESAMPLE_FILTER = Image.LANCZOS
+
+
+def asset_path(filename):
+    return BASE_DIR / filename
+
+
+def init_sounds():
+    if pygame is None:
+        return
+
+    try:
+        pygame.mixer.init()
+        click_sound = pygame.mixer.Sound(str(asset_path("click.wav")))
+    except Exception:
+        return
+
+    sounds.update({
+        "rock": click_sound,
+        "paper": click_sound,
+        "scissors": click_sound,
+    })
 
 # To initialize global variables
 user_score = 0
@@ -93,30 +117,27 @@ def show_game_screen():
     global window
     window.deiconify()
 
+# Function to enable or disable the choice buttons together.
+def set_choice_buttons_state(state):
+    for button in (rock_button, paper_button, scissors_button):
+        if button is not None:
+            button.config(state=state)
+
 # Function for displaying a countdown before starting the game.Performs a 3-second countdown, updates UI, and disables/enables buttons accordingly.
-def countdown():
-    rock_button.config(state=tk.DISABLED)
-    paper_button.config(state=tk.DISABLED)
-    scissors_button.config(state=tk.DISABLED)
+def countdown(seconds=3):
+    set_choice_buttons_state(tk.DISABLED)
 
-    countdown_label.config(text="Game starting in 3 seconds...")
-    window.update()
-    time.sleep(1)
+    def tick(remaining):
+        if remaining > 0:
+            suffix = "second" if remaining == 1 else "seconds"
+            countdown_label.config(text=f"Game starting in {remaining} {suffix}...")
+            window.after(1000, tick, remaining - 1)
+            return
 
-    countdown_label.config(text="Game starting in 2 seconds...")
-    window.update()
-    time.sleep(1)
+        countdown_label.config(text="")
+        set_choice_buttons_state(tk.NORMAL)
 
-    countdown_label.config(text="Game starting in 1 second...")
-    window.update()
-    time.sleep(1)
-
-    countdown_label.config(text="")
-
-    # To enable buttons after the countdown finishes
-    rock_button.config(state=tk.NORMAL)
-    paper_button.config(state=tk.NORMAL)
-    scissors_button.config(state=tk.NORMAL)
+    tick(seconds)
 
 # Function to process player's choice and manage game logic.Handles player's choice, computer's choice, determines the winner, updates UI, and manages game progression.
 def choose_option(user_choice):
@@ -205,12 +226,9 @@ def reset_scores():
 
 # Function for playing a sound based on the user's choice.
 def play_sound_based_on_choice(user_choice):
-    if user_choice == "rock":
-        rock_sound.play()
-    elif user_choice == "paper":
-        paper_sound.play()
-    elif user_choice == "scissors":
-        scissors_sound.play()
+    sound = sounds.get(user_choice)
+    if sound:
+        sound.play()
 
 # Function to determine the winner of the tournament.Compares scores to determine the tournament winner.
 def determine_winner(user, computer):
@@ -242,13 +260,13 @@ def setup_ui():
 
     # To load and resize images for choices
     desired_size = (100, 100)
-    rock_img = Image.open("rock.png").resize(desired_size)
+    rock_img = Image.open(asset_path("rock.png")).resize(desired_size, RESAMPLE_FILTER)
     rock_img = ImageTk.PhotoImage(rock_img)
 
-    paper_img = Image.open("paper.png").resize(desired_size)
+    paper_img = Image.open(asset_path("paper.png")).resize(desired_size, RESAMPLE_FILTER)
     paper_img = ImageTk.PhotoImage(paper_img)
 
-    scissors_img = Image.open("scissors.png").resize(desired_size)
+    scissors_img = Image.open(asset_path("scissors.png")).resize(desired_size, RESAMPLE_FILTER)
     scissors_img = ImageTk.PhotoImage(scissors_img)
 
     # To create frames for different UI components
@@ -425,6 +443,7 @@ game_menu.add_separator()
 game_menu.add_command(label="Exit", command=window.quit)
 
 # UI setup and welcome screen display.Calls setup_ui and show_welcome_screen functions to initialize the UI and show the welcome screen.
+init_sounds()
 setup_ui()
 show_welcome_screen()
 
