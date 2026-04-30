@@ -1,12 +1,15 @@
 # Rock, Paper, Scissors Game
 
-## Introduction
+A Tkinter desktop game for playing Rock, Paper, Scissors against the computer. The game includes normal play, tournament mode, image buttons, sound effects, keyboard shortcuts, and a mute option.
 
-Welcome to the **Rock, Paper, Scissors** game! This game allows you to play the classic Rock, Paper, Scissors against the computer. Make your choice, and see if you can outsmart the computer to win the game.
+## Requirements
 
----
+- Python 3
+- Tkinter
+- Pillow
+- pygame
 
-## Setup
+Install the Python dependencies with:
 
 ```bash
 python3 -m venv .venv
@@ -14,7 +17,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Tkinter is also required to run the GUI. Some Python installations include it by default; others may require a separate install.
+Tkinter is required for the GUI. Some Python installations include it by default; others require installing it separately.
 
 ## Run
 
@@ -28,73 +31,41 @@ python project.py
 python -m unittest discover
 ```
 
----
-
 ## Game Rules
 
-- You can choose between three options: **Rock**, **Paper**, or **Scissors**.
-- The computer will select its choice randomly.
-- The winner of each round is determined based on the classic Rock, Paper, Scissors rules:
-  - **Rock beats Scissors**
-  - **Scissors beats Paper**
-  - **Paper beats Rock**
-- The game continues until either you or the computer reaches a score of 5 for **Normal Game Mode**.
-- In **Tournament Game Mode**, the player must defeat three opponents to win the tournament.
+- Rock beats Scissors.
+- Scissors beats Paper.
+- Paper beats Rock.
+- Matching choices are a tie.
+- Normal mode ends when either player reaches 5 points.
+- Tournament mode requires the player to defeat 3 computer opponents.
 
----
+## Controls
 
-## Features
+- Click the Rock, Paper, or Scissors image buttons.
+- Press `R` for Rock.
+- Press `P` for Paper.
+- Press `S` for Scissors.
 
-### 1. **Game Modes:**
+Keyboard shortcuts are disabled during countdowns and game-over dialogs.
 
-- **Normal Mode**: 
-  - The game runs in a standard mode where the player competes against the computer.
-  - The first player to reach a score of 5 wins the game.
-  
-- **Tournament Mode**: 
-  - A special mode where the player competes against different computer opponents.
-  - The player must defeat three opponents to win the tournament.
+## Menu
 
----
+- **New Game**: resets to normal mode.
+- **Tournament Mode**: starts tournament mode.
+- **Mute Sound**: toggles sound effects on or off.
+- **Exit**: closes the game.
 
-### 2. **User Interface:**
+## Project Structure
 
-- **Welcome Screen**: 
-  - Players are greeted with a welcome screen where they can enter their name and choose between normal and tournament modes.
+- `project.py`: main game code.
+- `rock.png`, `paper.png`, `scissors.png`: choice button images.
+- `click.wav`: click sound effect.
+- `requirements.txt`: Python dependencies.
+- `tests/`: unit tests for game logic.
 
-- **Game Screen**: 
-  - After entering the name, players are presented with the main game screen containing buttons for **Rock**, **Paper**, and **Scissors**, as well as labels to display choices, results, and the current score.
+## Notes
 
-- **Countdown**: 
-  - A countdown timer is displayed before the game starts, providing a visual cue for the player.
-
-- **Choices**:
-  - Click on the image buttons representing **Rock**, **Paper**, or **Scissors** to make your choice.
-
-- **Score**:
-  - The score is displayed at the bottom, showing the number of rounds won by you and the computer.
-
-- **Result**: 
-  - The result of each round (Win, Lose, or Tie) is displayed after making a choice.
-
----
-
-### 3. **Game Over Screen:**
-
-- When the game or tournament ends, a **Game Over** screen is displayed, showing the winner and providing options to play again or exit the game.
-
----
-
-### 4. **Menu Options:**
-
-- The game includes a menu bar with options such as starting a new game, entering tournament mode, and exiting the game.
-
----
-
-## Enjoy the Game
-
-Have fun playing the **Rock, Paper, Scissors** game! Test your strategy and see if you can beat the computer. Good luck!
-
----
+The game loads assets relative to `project.py`, so it can be started from outside the project directory. The module is also safe to import in tests without launching the GUI.
 
 **Developed by**: Hasan Alizada
