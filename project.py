@@ -90,27 +90,27 @@ def show_welcome_screen():
 # Function to start a normal game mode
 def start_game(player_name):
     global welcome_screen, tournament_mode
+    update_player_name(player_name)
     welcome_screen.destroy()  # Closes welcome screen, sets game mode to normal, shows game screen, and starts countdown
     tournament_mode = False
     show_game_screen()
     update_ui("", "", "")
     countdown()
-    update_player_name(player_name)
 
 # Function to start tournament game mode.Similar to "start_game" but sets the game mode to tournament
 def start_tournament_mode(player_name):
     global welcome_screen, tournament_mode
+    update_player_name(player_name)
     welcome_screen.destroy()
     tournament_mode = True
     show_game_screen()
     update_ui("", "", "")
     countdown()
-    update_player_name(player_name)
 
 # Function to update the player's name globally,sets the global player name variable.
 def update_player_name(name):
     global player_name
-    player_name = name
+    player_name = name.strip() or "Player"
 
 # Function to show the main game screen,makes the main game window visible.
 def show_game_screen():
@@ -161,12 +161,8 @@ def choose_option(user_choice):
                 show_tournament_result(True)  # User wins the tournament
                 return
         elif computer_score == 2:
-            if computers_defeated == 2:  # If losing to Computer 3
-                show_tournament_result(False)  # User loses the tournament
-                return
-            else:
-                show_game_finish_screen(False)  # End the game if the computer wins
-                return
+            show_tournament_result(False)  # User loses the tournament
+            return
     else:
         # Checking for the end of the game in normal mode
         if user_score == 5:
