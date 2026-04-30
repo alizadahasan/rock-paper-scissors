@@ -69,10 +69,12 @@ paper_button = None
 scissors_button = None
 player_name = ""
 tournament_mode = False
+sound_muted = False
 window = None
 welcome_screen = None
 menu_bar = None
 game_menu = None
+sound_muted_var = None
 
 # Function to display the welcome screen with game mode options,hides main window, creates a new window for welcome screen with buttons to start different game modes
 def show_welcome_screen():
@@ -246,9 +248,17 @@ def reset_scores():
 
 # Function for playing a sound based on the user's choice.
 def play_sound_based_on_choice(user_choice):
+    if sound_muted:
+        return
+
     sound = sounds.get(user_choice)
     if sound:
         sound.play()
+
+# Function to update the sound setting from the menu toggle.
+def update_sound_muted():
+    global sound_muted
+    sound_muted = sound_muted_var.get()
 
 # Function to determine the winner of the tournament.Compares scores to determine the tournament winner.
 def determine_winner(user, computer):
@@ -336,6 +346,7 @@ def setup_ui():
     game_menu = tk.Menu(menu_bar, tearoff=0)
     game_menu.add_command(label="New Game", command=new_game)
     game_menu.add_command(label="Tournament Mode", command=start_tournament_mode_from_menu)
+    game_menu.add_checkbutton(label="Mute Sound", variable=sound_muted_var, command=update_sound_muted)
     game_menu.add_command(label="Exit", command=window.quit)
 
     # To add the new game menu to the menu bar
@@ -424,7 +435,7 @@ def get_emoji(choice):
     return emojis.get(choice, '')
 
 def main():
-    global window, menu_bar, game_menu, ImageTk
+    global window, menu_bar, game_menu, ImageTk, sound_muted_var
 
     if tk is None:
         raise RuntimeError("Tkinter is required to run the game.")
@@ -445,6 +456,8 @@ def main():
     game_menu = tk.Menu(menu_bar, tearoff=0)
     menu_bar.add_cascade(label="Menu", menu=game_menu)
     game_menu.add_command(label="New Game", command=new_game)
+    sound_muted_var = tk.BooleanVar(value=sound_muted)
+    game_menu.add_checkbutton(label="Mute Sound", variable=sound_muted_var, command=update_sound_muted)
     game_menu.add_separator()
     game_menu.add_command(label="Exit", command=window.quit)
 
